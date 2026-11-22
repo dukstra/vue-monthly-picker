@@ -1,46 +1,56 @@
 <template>
   <div class="vue-monthly-picker">
-    <div class="month-picker-wrapper"
-         :class="{ 'active visible':showMenu }">
-      <div class="month-year-label picker" type="text" autocomplete="off" tabindex="0" @click="openMenu">
-          <div @click="openMenu"
-            class="month-year-display"
-            :disabled="disabled"
-            :class="[inputClass, {'placeholder': !value}]">
-             <div class="display-text" :class="'display-text-'+alignment" :style="[{'text-align': alignment}]">{{displayText}}</div>
-             <span class="vmp-input-append" @click.stop.prevent="clearSelect" v-if="clearOption && value">
-               <i class="vmp-clear-icon"/>
-             </span>
+    <div class="month-picker-wrapper" :class="{ 'active visible': showMenu }">
+      <div
+        class="month-year-label picker"
+        type="text"
+        autocomplete="off"
+        tabindex="0"
+        role="button"
+        :aria-expanded="showMenu ? 'true' : 'false'"
+        :aria-disabled="disabled ? 'true' : 'false'"
+        @click="openMenu"
+        @keydown.enter.prevent="openMenu"
+        @keydown.space.prevent="openMenu"
+      >
+        <div
+          class="month-year-display"
+          :disabled="disabled"
+          :class="[inputClass, { placeholder: !modelValue }]"
+        >
+          <div class="display-text" :class="'display-text-' + alignment" :style="{ textAlign: alignment }">
+            {{ displayText }}
           </div>
+          <span class="vmp-input-append" @click.stop.prevent="clearSelect" v-if="clearOption && modelValue">
+            <i class="vmp-clear-icon" />
+          </span>
+        </div>
       </div>
       <div class="text"></div>
       <div class="date-popover" :class="menuClass" :style="menuStyle" tabindex="-1">
         <div class="picker" style="text-align: center">
           <div class="flexbox">
-            <span class="prev" @click="prevYear" :class="{deactive: !canBack}"></span>
-            <div>{{year}}</div>
-            <span class="next" @click="nextYear" :class="{deactive: !canNext}"></span>
+            <span class="prev" @click="prevYear" :class="{ deactive: !canBack }"></span>
+            <div>{{ year }}</div>
+            <span class="next" @click="nextYear" :class="{ deactive: !canNext }"></span>
           </div>
           <div class="flexbox monthItem">
-            <template v-for="(month, idx) in monthLabels">
-              <div class="item active"
-                :class="{'selected': isCurrentSelected(year, idx)}"
-                :style="[{'background-color': getBackgroundColor(year, idx)}]"
+            <template v-for="(month, idx) in monthLabels" :key="idx">
+              <div
                 v-if="isActive(idx)"
+                class="item active"
+                :class="{ selected: isCurrentSelected(year, idx) }"
+                :style="{ backgroundColor: getBackgroundColor(year, idx) }"
                 @click="selectMonth(idx)"
-                :key="idx">{{month}}
-              </div>
-              <div v-else
-                :class="{'selected': isCurrentSelected(year, idx)}"
-                :key="idx"
-                class="item deactive">
+              >{{ month }}</div>
+              <div v-else class="item deactive" :class="{ selected: isCurrentSelected(year, idx) }">
                 {{ month }}
               </div>
             </template>
           </div>
         </div>
       </div>
-   </div>
+    </div>
   </div>
 </template>
 
@@ -48,195 +58,123 @@
 import moment from 'moment'
 
 export default {
-  name: 'vue-monthly-picker',
+  name: 'VueMonthlyPicker',
   props: {
-    'value': {
-      default: null
-    },
-    'disabled': {
-      type: Boolean,
-      default: false
-    },
-    'inputClass': {
-      default: 'input'
-    },
-    'placeHolder': {
-      type: String,
-      default: ''
-    },
-    'alignment': {
+    modelValue: { default: null },
+    disabled: { type: Boolean, default: false },
+    inputClass: { default: 'input' },
+    placeHolder: { type: String, default: '' },
+    alignment: {
       type: String,
       default: 'left',
-      validator: function (value) {
-        // The value must match one of these strings
-        return ['left', 'right', 'center'].indexOf(value) !== -1
-      }
+      validator: value => ['left', 'right', 'center'].includes(value),
     },
-    'selectedBackgroundColor': {
-      type: String,
-      default: '#007bff'
-    },
+    selectedBackgroundColor: { type: String, default: '#007bff' },
     monthLabels: {
       type: Array,
-      default: function () {
-        return ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
-      }
+      default: () => ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
     },
-    min: {
-      default: null
-    },
-    max: {
-      default: null
-    },
-    dateFormat: {
-      type: String,
-      default: 'YYYY/MM'
-    },
-    clearOption: {
-      type: Boolean,
-      default: true
-    }
+    min: { default: null },
+    max: { default: null },
+    dateFormat: { type: String, default: 'YYYY/MM' },
+    clearOption: { type: Boolean, default: true },
   },
-  data () {
+  emits: ['update:modelValue', 'selected'],
+  data() {
     return {
       showMenu: false,
       year: moment().format('YYYY'),
-      month: moment().format('MM')
+      month: moment().format('MM'),
+      outsideClickHandler: null,
     }
   },
-  mounted () {
-    this.init()
+  mounted() {
+    this.outsideClickHandler = event => {
+      if (this.$el && !this.$el.contains(event.target)) this.closeMenu()
+    }
+    document.addEventListener('click', this.outsideClickHandler, false)
+    this.setValue(this.modelValue)
+  },
+  unmounted() {
+    document.removeEventListener('click', this.outsideClickHandler, false)
   },
   watch: {
-    value: function (value) {
+    modelValue(value) {
       this.setValue(value)
-    }
+    },
   },
   computed: {
-    menuClass () {
-      return {
-        visible: this.showMenu,
-        hidden: !this.showMenu
-      }
+    menuClass() {
+      return { visible: this.showMenu, hidden: !this.showMenu }
     },
-    menuStyle () {
+    menuStyle() {
       return {
         display: this.showMenu ? 'block' : 'none',
-        'left': this.alignment === 'right' ? '100%' : this.alignment === 'center' ? '50%' : '',
-        'transform': this.alignment === 'right' ? 'translate(-100%,0)' : this.alignment === 'center' ? 'translate(-50%,0)' : ''
+        left: this.alignment === 'right' ? '100%' : this.alignment === 'center' ? '50%' : '',
+        transform: this.alignment === 'right' ? 'translate(-100%,0)' : this.alignment === 'center' ? 'translate(-50%,0)' : '',
       }
     },
-    displayText () {
-      if (this.value) {
-        let valueMoment = null
-        if (typeof this.value === 'string') {
-          valueMoment = moment(this.value)
-        } else {
-          valueMoment = this.value
-        }
-        if (valueMoment && valueMoment.isValid()) {
-          return valueMoment.format(this.dateFormat)
-        }
-      } else {
-        return this.placeHolder
-      }
+    displayText() {
+      if (!this.modelValue) return this.placeHolder
+      const valueMoment = typeof this.modelValue === 'string' ? moment(this.modelValue) : this.modelValue
+      return valueMoment && valueMoment.isValid() ? valueMoment.format(this.dateFormat) : this.placeHolder
     },
-    canBack () {
+    canBack() {
       if (!this.min) return true
-      const currentVal = this.internalMomentValue.clone().startOf('year')
-      return this.min.isBefore(currentVal)
+      return this.min.isBefore(this.internalMomentValue.clone().startOf('year'))
     },
-    canNext () {
+    canNext() {
       if (!this.max) return true
-      const currentVal = this.internalMomentValue.clone().endOf('year')
-      return currentVal.isBefore(this.max)
+      return this.internalMomentValue.clone().endOf('year').isBefore(this.max)
     },
-    internalMomentValue () {
-      const yrMonth = this.year + '/' + this.month
-      return moment(yrMonth, 'YYYY/MM')
-    }
+    internalMomentValue() {
+      return moment(this.year + '/' + this.month, 'YYYY/MM')
+    },
   },
   methods: {
-    init () {
-      document.addEventListener('click', (e) => {
-        if (this.$el && !this.$el.contains(e.target)) {
-          this.closeMenu()
-        }
-      }, false)
-      this.setValue(this.value)
+    openMenu() {
+      if (!this.disabled) this.showMenu = true
     },
-    openMenu () {
-      if (!this.disabled) {
-        this.showMenu = true
-      }
-    },
-    closeMenu () {
+    closeMenu() {
       this.showMenu = false
     },
-    prevYear () {
-      if (!this.canBack) return
-      let newYear = parseInt(this.year) - 1
-      this.year = newYear.toString()
+    prevYear() {
+      if (this.canBack) this.year = String(Number.parseInt(this.year, 10) - 1)
     },
-    nextYear () {
-      if (!this.canNext) return
-      let newYear = parseInt(this.year) + 1
-      this.year = newYear.toString()
+    nextYear() {
+      if (this.canNext) this.year = String(Number.parseInt(this.year, 10) + 1)
     },
-    selectMonth (idx) {
-      this.month = (parseInt(idx) + 1).toString()
-      this.selectPicker()
+    selectMonth(index) {
+      this.month = String(index + 1).padStart(2, '0')
+      const value = this.internalMomentValue.clone()
+      this.$emit('update:modelValue', value)
+      this.$emit('selected', value.clone())
       this.closeMenu()
     },
-    selectPicker () {
-      this.$emit('input', this.internalMomentValue.clone())
-      this.$emit('selected', this.internalMomentValue.clone())
-    },
-    setValue (value) {
-      if (typeof value === 'string') {
-        value = moment(value)
-      }
+    setValue(value) {
+      if (typeof value === 'string') value = moment(value)
       if (value && value.isValid()) {
         this.month = value.format('MM')
         this.year = value.format('YYYY')
       }
     },
-    isActive (idx) {
-      let realMonth = idx + 1
-      const yrMonth = this.year + '/' + (realMonth < 10 ? '0' + realMonth : realMonth)
-      if (this.min && moment(yrMonth, 'YYYY/MM').isBefore(this.min)) {
-        return false
-      }
-      if (this.max && moment(yrMonth, 'YYYY/MM').isAfter(this.max)) {
-        return false
-      }
-      return true
+    isActive(index) {
+      const monthValue = moment(`${this.year}/${String(index + 1).padStart(2, '0')}`, 'YYYY/MM')
+      return !(this.min && monthValue.isBefore(this.min)) && !(this.max && monthValue.isAfter(this.max))
     },
-    isCurrentSelected (year, monthIdx) {
-      if (!this.value) {
-        return false
-      }
-      let checkValue = this.value
-      if (typeof this.value === 'string') {
-        checkValue = moment(this.value)
-      }
-      if (checkValue && checkValue.isValid()) {
-        const currentMonth = checkValue.format('MM')
-        const currentYear = checkValue.format('YYYY')
-        return Number(currentMonth) === Number(monthIdx + 1) && Number(currentYear) === Number(year)
-      }
-      return false
+    isCurrentSelected(year, monthIndex) {
+      if (!this.modelValue) return false
+      const value = typeof this.modelValue === 'string' ? moment(this.modelValue) : this.modelValue
+      return value.isValid() && Number(value.format('MM')) === monthIndex + 1 && Number(value.format('YYYY')) === Number(year)
     },
-    getBackgroundColor (year, monthIdx) {
-      if (this.isCurrentSelected(year, monthIdx)) {
-        return this.selectedBackgroundColor
-      }
+    getBackgroundColor(year, monthIndex) {
+      return this.isCurrentSelected(year, monthIndex) ? this.selectedBackgroundColor : undefined
     },
-    clearSelect () {
-      this.$emit('input', null)
+    clearSelect() {
+      this.$emit('update:modelValue', null)
       this.$emit('selected', null)
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -321,6 +259,8 @@ $lightgray: #d4d4d4;
     z-index: 2;
   }
   .month-year-display {
+    display: flex;
+    justify-content: space-between;
     &:hover {
       cursor: pointer;
     }
