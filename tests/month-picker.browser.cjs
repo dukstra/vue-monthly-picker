@@ -2,9 +2,9 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const { chromium } = require(process.env.RSA_BROWSER_PLAYWRIGHT || '/tmp/rsapharma-browser-tools/node_modules/playwright')
 
-const vuePath = process.env.RSA_MONTHLY_VUE || require.resolve('vue/dist/vue.js')
+const vuePath = process.env.RSA_MONTHLY_VUE || path.join(path.dirname(require.resolve('vue')), 'dist/vue.global.js')
 const momentPath = process.env.RSA_MONTHLY_MOMENT || require.resolve('moment/min/moment.min.js')
-const pickerPath = path.resolve(__dirname, '../dist/lib/vue-monthly-picker.min.js')
+const pickerPath = process.env.RSA_MONTHLY_PICKER_BUNDLE || path.resolve(__dirname, '../dist/lib/vue-monthly-picker.min.js')
 const chromiumPath = process.env.RSA_BROWSER_CHROMIUM || '/home/sanketsharma/.cache/ms-playwright/chromium-1234/chrome-linux/chrome'
 
 async function main() {
@@ -12,6 +12,7 @@ async function main() {
 
     try {
         const page = await browser.newPage()
+        page.setDefaultTimeout(3000)
         const errors = []
         page.on('pageerror', error => errors.push(error.message))
         await page.setContent('<div id="app"></div>')
@@ -20,7 +21,8 @@ async function main() {
         await page.addScriptTag({ path: pickerPath })
         await page.evaluate(() => {
             window.selectedEvents = []
-            const picker = window['vue-monthly-picker'].default || window['vue-monthly-picker']
+            const library = window.VueMonthlyPicker || window['vue-monthly-picker']
+            const picker = library.default || library
             const component = {
                 data: () => ({
                     selectedMonth: window.moment('2026-10-15'),
@@ -55,6 +57,8 @@ async function main() {
         await page.locator('.month-year-label').click()
         assert.equal(await page.locator('.item.deactive').filter({ hasText: 'Dec' }).count(), 1)
 
+        await page.locator('.month-year-label').hover()
+        assert.equal(await page.locator('.vmp-input-append').evaluate(element => getComputedStyle(element).display), 'block')
         await page.locator('.vmp-input-append').click()
         assert.equal(await page.locator('.month-year-display').innerText(), '')
         assert.deepEqual(await page.evaluate(() => window.selectedEvents), ['2026-11', null])

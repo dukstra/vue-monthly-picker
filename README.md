@@ -1,72 +1,54 @@
-# vue-monthly-picker
+# @dukstra/vue-monthly-picker
 
-> Vue Monthly Picker Components
+A Vue 3 month and year picker. Its `v-model` value is a Moment object. The
+component keeps the existing month labels, min/max limits, alignment, clear
+button, and `selected` event behavior.
 
-[![npm version](https://badge.fury.io/js/vue-monthly-picker.svg)](https://badge.fury.io/js/vue-monthly-picker)
-[![CircleCI](https://circleci.com/gh/ittus/vue-monthly-picker.svg?style=shield&circle-token=fa41e296ca28a346dfcea28addb1d5f671f187a8)](https://circleci.com/gh/ittus/vue-monthly-picker)
+## Install
 
-Checkout demo at https://ittus.github.io/vue-monthly-picker/
-
-# Support
-<a href="https://www.buymeacoffee.com/8buMYCOog" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: auto !important;width: auto !important;"></a>
-
-# Install
-```
-npm install vue-monthly-picker --save
-```
-```javascript
-import VueMonthlyPicker from 'vue-monthly-picker'
-Vue.component('my-component', {
-    components: {
-        VueMonthlyPicker
-    }
-});
-```
-# Usage
-
-```html
-<vue-monthly-picker
- v-model="selectedMonth">
-</vue-monthly-picker>
+```sh
+npm install @dukstra/vue-monthly-picker moment
 ```
 
-**Note**: `v-model` binding value need to be a **moment** object
-## Available props
+Vue 3 and Moment are peer dependencies.
 
+## Use
 
-| Prop                  | Type            | Default     | Description                              |
-|-----------------------|-----------------|-------------|------------------------------------------|
-| disabled                 | Boolean    |      `false`     | Enable/disable component             |
-| monthLabels                  | Array          |    `['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']`         | Customize month labels                      |
-| placeHolder                  | String          |    ''         | Place holder when value is null                      |
-| min                  | moment          |    `null`         | Minimum time to select                      |
-| max                  | moment          |    `null`         | Maximum time to select                      |
-| dateFormat                  | String          |    `YYYY/MM`         | Display format.                      |
-| value                  | moment          |    `null`         | Moment value of selected month and year                  |
-| alignment                  | String          |    `left`         | Alignment of input value, possible value: `left`, `right`, `center`                  |
-| selectedBackgroundColor                  | String          |    `#007bff`         | Background color of selected value. It can be HTML color name (red, green, blue) or hexa color code (`#00FF00`, `#0000FF`)                  |
-| clearOption                  | Boolean          |    true         | Show/Hide clear option                  |
-| inputClass                  | String          |    `input`         | Customize css class for visible element                  |
+```vue
+<template>
+  <VueMonthlyPicker
+    v-model="selectedMonth"
+    :month-labels="monthLabels"
+    :min="minimumMonth"
+    :max="maximumMonth"
+    @selected="onMonthSelected"
+  />
+</template>
 
+<script setup>
+import { ref } from 'vue'
+import moment from 'moment'
+import VueMonthlyPicker from '@dukstra/vue-monthly-picker'
 
-## Events
+const selectedMonth = ref(moment())
+const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const minimumMonth = moment('2026-01-01')
+const maximumMonth = moment('2026-12-31')
+const onMonthSelected = value => {
+  // value is a Moment object, or null when cleared
+}
+</script>
+```
 
-| Event | Params | Description |
-|-------|--------|-------------|
-|selected| selected month in `moment`| A month has been selected |
+For `v-model`, selection emits `update:modelValue` with the selected Moment
+value. The `selected` event continues to emit the same value for existing
+listeners. Clearing emits `null`.
 
-## Build Setup
+## Build and test
 
-``` bash
-# install dependencies
-npm install
-
-# serve with hot reload at localhost:8080
-npm run dev
-
-# build for production with minification
+```sh
+npm ci
 npm run build
-
-# run all tests
-npm run test
+npx playwright install chromium
+npm run test:browser
 ```
